@@ -5,7 +5,7 @@ Reusable Cypress performance commands for collecting browser timings and Google-
 ## Install
 
 ```bash
-npm install --save-dev @pete2121/cypress-performance-ui
+npm install --save-dev cypress-performance-ui
 ```
 
 ## Use in Cypress
@@ -13,13 +13,13 @@ npm install --save-dev @pete2121/cypress-performance-ui
 ### Option 1: auto-register in support file
 
 ```js
-import "@pete2121/cypress-performance-ui";
+import "cypress-performance-ui";
 ```
 
 ### Option 2: explicit registration
 
 ```js
-const { registerPerformanceCommands } = require("@pete2121/cypress-performance-ui");
+const { registerPerformanceCommands } = require("cypress-performance-ui");
 
 registerPerformanceCommands();
 ```
