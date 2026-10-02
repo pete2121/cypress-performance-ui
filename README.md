@@ -1,6 +1,6 @@
 # Cypress performance UI
 
-Reusable Cypress performance commands for collecting browser timings and Google-style page-load metrics.
+Reusable Cypress performance commands for collecting W3C browser timings and generating a page-load HTML report.
 
 ## Install
 
@@ -96,6 +96,16 @@ This package focuses on timings that are commonly used in browser performance an
 - loadEventEnd
 - firstContentfulPaint
 - duration
+
+## GitHub showcase
+
+This repository includes a generated HTML report example and a screenshot for demonstration purposes.
+
+### Example report
+
+![Cypress performance report example](./assets/performance-report.png)
+
+The generated report contains a summary table and chart views for the page-load metrics.
 
 ## Author
 

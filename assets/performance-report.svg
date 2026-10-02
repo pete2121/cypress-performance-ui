@@ -1,0 +1,37 @@
+<svg width="1600" height="980" viewBox="0 0 1600 980" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Cypress Performance UI Report</title>
+  <desc id="desc">Example of a Cypress W3C page-load performance dashboard</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f3f8ff"/>
+      <stop offset="100%" stop-color="#eef5ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="980" fill="url(#bg)"/>
+  <rect x="50" y="40" width="1500" height="900" rx="26" fill="#ffffff" stroke="#d8e3ea" stroke-width="2"/>
+  <rect x="80" y="80" width="1440" height="120" rx="18" fill="#edf7fb" stroke="#cfeaf4" stroke-width="2"/>
+  <text x="120" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="42" font-weight="700" fill="#0f2d3a">Cypress Performance UI</text>
+  <text x="120" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="22" fill="#6b7c85">W3C page-load timings and HTML report example</text>
+
+  <g>
+    <rect x="90" y="240" width="630" height="190" rx="18" fill="#ffffff" stroke="#d8e3ea" stroke-width="2"/>
+    <text x="120" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#0f2d3a">Duration</text>
+    <text x="120" y="370" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="700" fill="#087e8b">2119.4 ms</text>
+
+    <rect x="760" y="240" width="630" height="190" rx="18" fill="#ffffff" stroke="#d8e3ea" stroke-width="2"/>
+    <text x="790" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#0f2d3a">TTFB</text>
+    <text x="790" y="370" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="700" fill="#f18f01">371.8 ms</text>
+
+    <rect x="90" y="470" width="630" height="190" rx="18" fill="#ffffff" stroke="#d8e3ea" stroke-width="2"/>
+    <text x="120" y="520" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#0f2d3a">FCP</text>
+    <text x="120" y="600" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="700" fill="#2a9d8f">2136 ms</text>
+
+    <rect x="760" y="470" width="630" height="190" rx="18" fill="#ffffff" stroke="#d8e3ea" stroke-width="2"/>
+    <text x="790" y="520" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#0f2d3a">DOMContentLoaded</text>
+    <text x="790" y="600" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="700" fill="#5e60ce">2118.8 ms</text>
+  </g>
+
+  <rect x="90" y="760" width="1420" height="120" rx="18" fill="#edf7fb" stroke="#d8e3ea" stroke-width="2"/>
+  <text x="120" y="820" font-family="Segoe UI, Arial, sans-serif" font-size="24" fill="#0f2d3a">Performance report generated from Cypress W3C timings</text>
+  <text x="120" y="855" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#6b7c85">Developed by Petros Plakogiannis</text>
+</svg>

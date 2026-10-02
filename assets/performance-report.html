@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cypress Performance Report</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --bg: #f3f8ff;
+      --panel: #ffffff;
+      --ink: #0f2d3a;
+      --accent: #087e8b;
+      --accent2: #f18f01;
+      --muted: #6b7c85;
+      --border: #d8e3ea;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 20%, #d8f0ff, transparent 45%),
+        radial-gradient(circle at 85% 10%, #ffe9cc, transparent 40%),
+        var(--bg);
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    h1 {
+      margin: 14px 0 12px;
+      font-size: 30px;
+      letter-spacing: 0.2px;
+    }
+    p {
+      color: var(--muted);
+      margin-top: 0;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 24px rgba(8, 36, 46, 0.07);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: white;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      padding: 8px;
+    }
+    th {
+      font-weight: 700;
+      background: #f7fbff;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .footer-credit {
+      margin-top: 18px;
+      font-size: 15px;
+      color: #7d8a92;
+      text-align: center;
+      letter-spacing: 0.2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Maritime Page Load Performance</h1>
+    <p>Generated from Cypress performance runs.</p>
+
+    <div class="grid">
+      <div class="panel"><div id="durationChart"></div></div>
+      <div class="panel"><div id="ttfbChart"></div></div>
+      <div class="panel"><div id="fcpChart"></div></div>
+      <div class="panel"><div id="domChart"></div></div>
+    </div>
+
+    <div class="panel">
+      <div id="dailyDurationBarChart"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Raw Measurements</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Page</th>
+            <th>Duration (ms)</th>
+            <th>TTFB (ms)</th>
+            <th>FCP (ms)</th>
+            <th>DOMContentLoaded (ms)</th>
+            <th>Load Event End (ms)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>2026-08-05T08:11:53.905Z</td>
+            <td>regulator_login_page</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+          </tr><tr>
+            <td>2026-08-05T08:11:58.802Z</td>
+            <td>maritime_home_after_login</td>
+            <td>2119.4</td>
+            <td>371.8</td>
+            <td>-</td>
+            <td>2118.8</td>
+            <td>2119.4</td>
+          </tr><tr>
+            <td>2026-08-05T08:12:06.124Z</td>
+            <td>operator_create_form_initial</td>
+            <td>406.8</td>
+            <td>227.8</td>
+            <td>2136</td>
+            <td>406.1</td>
+            <td>406.8</td>
+          </tr><tr>
+            <td>2026-08-05T08:12:10.913Z</td>
+            <td>operator_create_success</td>
+            <td>406.8</td>
+            <td>227.8</td>
+            <td>2136</td>
+            <td>406.1</td>
+            <td>406.8</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer-credit"><strong>Developed by Petros Plakogiannis</strong></div>
+  </div>
+
+  <script>
+    const data = [{"pageName":"regulator_login_page","timestamp":"2026-08-05T08:11:53.905Z","duration":null,"ttfb":null,"domContentLoaded":null,"loadEventEnd":null,"firstContentfulPaint":null},{"pageName":"maritime_home_after_login","timestamp":"2026-08-05T08:11:58.802Z","duration":2119.4,"ttfb":371.8,"domContentLoaded":2118.8,"loadEventEnd":2119.4,"firstContentfulPaint":null},{"pageName":"operator_create_form_initial","timestamp":"2026-08-05T08:12:06.124Z","duration":406.8,"ttfb":227.8,"domContentLoaded":406.1,"loadEventEnd":406.8,"firstContentfulPaint":2136},{"pageName":"operator_create_success","timestamp":"2026-08-05T08:12:10.913Z","duration":406.8,"ttfb":227.8,"domContentLoaded":406.1,"loadEventEnd":406.8,"firstContentfulPaint":2136}];
+
+    function buildSeries(metricKey) {
+      return {
+        x: data.map((d) => d.timestamp),
+        y: data.map((d) => d[metricKey]),
+        text: data.map((d) => d.pageName),
+        mode: "lines+markers",
+        type: "scatter"
+      };
+    }
+
+    function buildDailyAverages(metricKey) {
+      const grouped = data.reduce((acc, row) => {
+        const metricValue = row[metricKey];
+        if (typeof metricValue !== "number") {
+          return acc;
+        }
+
+        const day = new Date(row.timestamp).toISOString().slice(0, 10);
+        if (!acc[day]) {
+          acc[day] = { sum: 0, count: 0 };
+        }
+
+        acc[day].sum += metricValue;
+        acc[day].count += 1;
+        return acc;
+      }, {});
+
+      const days = Object.keys(grouped).sort();
+      const averages = days.map((day) => Number((grouped[day].sum / grouped[day].count).toFixed(2)));
+
+      return { days, averages };
+    }
+
+    const commonLayout = {
+      margin: { t: 30, r: 20, l: 50, b: 50 },
+      paper_bgcolor: "white",
+      plot_bgcolor: "white",
+      xaxis: { title: "Run Time" },
+      yaxis: { title: "Milliseconds" }
+    };
+
+    Plotly.newPlot("durationChart", [buildSeries("duration")], {
+      ...commonLayout,
+      title: "Total Duration"
+    });
+
+    Plotly.newPlot("ttfbChart", [buildSeries("ttfb")], {
+      ...commonLayout,
+      title: "TTFB"
+    });
+
+    Plotly.newPlot("fcpChart", [buildSeries("firstContentfulPaint")], {
+      ...commonLayout,
+      title: "First Contentful Paint"
+    });
+
+    Plotly.newPlot("domChart", [buildSeries("domContentLoaded")], {
+      ...commonLayout,
+      title: "DOMContentLoaded"
+    });
+
+    const dailyDuration = buildDailyAverages("duration");
+    Plotly.newPlot(
+      "dailyDurationBarChart",
+      [
+        {
+          x: dailyDuration.days,
+          y: dailyDuration.averages,
+          type: "bar",
+          marker: { color: "#087e8b" }
+        }
+      ],
+      {
+        ...commonLayout,
+        title: "Average Total Duration by Date",
+        xaxis: { title: "Date" },
+        yaxis: { title: "Milliseconds" }
+      }
+    );
+  </script>
+</body>
+</html>
