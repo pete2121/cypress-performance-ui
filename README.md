@@ -74,7 +74,7 @@ it("collects W3C timings", () => {
 
 ### `cy.generatePerformanceReport(filePath)`
 
-Generates a simple HTML report from the current page timing metrics.
+Generates a page-load report in HTML from the collected timing metrics.
 
 ```js
 it("writes HTML report", () => {
@@ -99,13 +99,13 @@ This package focuses on timings that are commonly used in browser performance an
 
 ## GitHub showcase
 
-This repository includes a generated HTML report example and a screenshot for demonstration purposes.
+This repository includes a reusable report preview alongside the full HTML dashboard example.
 
-### Example report
+### Report preview
 
-![Cypress performance report example](./assets/performance-report.png)
+![Maritime page load performance report](./assets/performance-report.svg)
 
-The generated report contains a summary table and chart views for the page-load metrics.
+The static SVG is a preview of the real dashboard layout. The full rendered HTML report is available in [assets/performance-report.html](./assets/performance-report.html).
 
 ## Author
 
