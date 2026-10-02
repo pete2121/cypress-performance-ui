@@ -1,0 +1,30 @@
+{
+  "name": "@pete2121/cypress-performance-ui",
+  "version": "1.0.0",
+  "description": "Cypress performance UI",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "keywords": [
+    "cypress",
+    "performance",
+    "web-vitals",
+    "google-timings",
+    "custom-commands"
+  ],
+  "author": "Petros Plakogiannis",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pete2121/cypress-performance-ui.git"
+  },
+  "homepage": "https://github.com/pete2121/cypress-performance-ui#readme",
+  "bugs": {
+    "url": "https://github.com/pete2121/cypress-performance-ui/issues"
+  },
+  "peerDependencies": {
+    "cypress": ">=10.0.0"
+  }
+}
