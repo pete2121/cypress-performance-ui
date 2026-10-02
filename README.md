@@ -103,7 +103,7 @@ This repository includes a generated HTML report example and a screenshot for de
 
 ### Example report
 
-![Cypress performance report example](./assets/performance-report.png)
+![Cypress performance report example](./assets/performance-report.svg)
 
 The generated report contains a summary table and chart views for the page-load metrics.
 
