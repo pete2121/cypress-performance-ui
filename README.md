@@ -4,7 +4,7 @@ Performance testing directly inside your Cypress tests. Collect browser-native m
 
 ### Report preview
 
-![Maritime page load performance report](./assets/performance-report.svg)
+![Page load performance report](./assets/performance-report.svg)
 
 
 ## Install
@@ -106,11 +106,6 @@ This package focuses on timings that are commonly used in browser performance an
 
 This repository includes a reusable report preview alongside the full HTML dashboard example.
 
-### Report preview
-
-![Page load performance report](./assets/performance-report.svg)
-
-The static SVG is a preview of the real dashboard layout. The full rendered HTML report is available in [assets/performance-report.html](./assets/performance-report.html).
 
 ## Author
 
