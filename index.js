@@ -51,7 +51,7 @@ function generateHtmlReport(rows) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cypress Performance Report</title>
+  <title>Page Load Performance Report</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root {
@@ -129,7 +129,7 @@ function generateHtmlReport(rows) {
 </head>
 <body>
   <div class="wrap">
-    <h1>Maritime Page Load Performance</h1>
+    <h1>Page Load Performance</h1>
     <p>Generated from Cypress performance runs.</p>
 
     <div class="grid">
