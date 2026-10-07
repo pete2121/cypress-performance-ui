@@ -6,17 +6,6 @@ function toFixedNumber(value, digits = 2) {
   return Number(value.toFixed(digits));
 }
 
-function writeReportFile(filePath, reportHtml) {
-  const fs = require("fs");
-  const path = require("path");
-
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  fs.writeFileSync(filePath, reportHtml, "utf8");
-}
 
 function generateHtmlReport(rows) {
   const safeRows = rows.map((row) => ({
@@ -250,120 +239,258 @@ function generateHtmlReport(rows) {
 </body>
 </html>`;
 }
-
 function registerPerformanceCommands() {
   if (typeof Cypress === "undefined") {
     return;
   }
 
-  Cypress.Commands.add("collectPageLoadMetrics", (pageName = "page") => {
-    return cy.window({ log: false }).then((win) => {
-      const performance = win.performance || null;
-      const navigationEntry =
-        performance && typeof performance.getEntriesByType === "function"
-          ? performance.getEntriesByType("navigation")[0] || null
-          : null;
+  // ----------------------------------------
+  // Collect metrics
+  // ----------------------------------------
 
-      const paintEntries =
-        performance && typeof performance.getEntriesByType === "function"
-          ? performance.getEntriesByType("paint") || []
-          : [];
-
-      const firstContentfulPaint =
-        paintEntries.find((entry) => entry.name === "first-contentful-paint") || null;
-
-      const metric = {
-        pageName,
-        timestamp: new Date().toISOString(),
-        url: win.location.href,
-        metrics: {
-          duration: toFixedNumber(navigationEntry?.duration),
-          responseStart: toFixedNumber(navigationEntry?.responseStart),
-          domContentLoaded: toFixedNumber(navigationEntry?.domContentLoadedEventEnd),
-          loadEventEnd: toFixedNumber(navigationEntry?.loadEventEnd),
-          firstContentfulPaint: toFixedNumber(firstContentfulPaint?.startTime),
-          navigationStart: toFixedNumber(navigationEntry?.startTime)
-        }
-      };
-
-      return metric;
-    });
-  });
-
-  Cypress.Commands.add("measureW3CTimings", (pageName = "page") => {
-    return cy.collectPageLoadMetrics(pageName).then((metrics) => {
-      return {
-        pageName: metrics.pageName,
-        timestamp: metrics.timestamp,
-        url: metrics.url,
-        w3cTimings: {
-          navigationStart: metrics.metrics.navigationStart,
-          responseStart: metrics.metrics.responseStart,
-          domContentLoaded: metrics.metrics.domContentLoaded,
-          loadEventEnd: metrics.metrics.loadEventEnd,
-          firstContentfulPaint: metrics.metrics.firstContentfulPaint,
-          duration: metrics.metrics.duration
-        }
-      };
-    });
-  });
-
-  Cypress.Commands.add("generatePerformanceReport", (filePath = "cypress/performance/reports/performance-report.html") => {
-    return cy.then(() => {
-      const rows = [];
-      const safePath = require("path").resolve(filePath);
-
+  Cypress.Commands.add(
+    "collectPageLoadMetrics",
+    (pageName = "page") => {
       return cy.window({ log: false }).then((win) => {
         const performance = win.performance || null;
+
         const navigationEntry =
-          performance && typeof performance.getEntriesByType === "function"
+          performance &&
+          typeof performance.getEntriesByType === "function"
             ? performance.getEntriesByType("navigation")[0] || null
             : null;
 
         const paintEntries =
-          performance && typeof performance.getEntriesByType === "function"
+          performance &&
+          typeof performance.getEntriesByType === "function"
             ? performance.getEntriesByType("paint") || []
             : [];
 
         const firstContentfulPaint =
-          paintEntries.find((entry) => entry.name === "first-contentful-paint") || null;
-
-        rows.push({
-          pageName: "Current page",
-          timestamp: new Date().toISOString(),
-          metrics: {
-            duration: toFixedNumber(navigationEntry?.duration),
-            responseStart: toFixedNumber(navigationEntry?.responseStart),
-            domContentLoaded: toFixedNumber(navigationEntry?.domContentLoadedEventEnd),
-            loadEventEnd: toFixedNumber(navigationEntry?.loadEventEnd),
-            firstContentfulPaint: toFixedNumber(firstContentfulPaint?.startTime),
-            navigationStart: toFixedNumber(navigationEntry?.startTime)
-          }
-        });
-
-        const html = generateHtmlReport(rows);
-        writeReportFile(safePath, html);
+          paintEntries.find(
+            (entry) =>
+              entry.name === "first-contentful-paint"
+          ) || null;
 
         return {
-          filePath: safePath,
-          rows,
-          html,
-          message: "Performance report generated successfully"
+          pageName,
+          timestamp: new Date().toISOString(),
+          url: win.location.href,
+
+          metrics: {
+            duration: toFixedNumber(
+              navigationEntry?.duration
+            ),
+
+            responseStart: toFixedNumber(
+              navigationEntry?.responseStart
+            ),
+
+            domContentLoaded: toFixedNumber(
+              navigationEntry?.domContentLoadedEventEnd
+            ),
+
+            loadEventEnd: toFixedNumber(
+              navigationEntry?.loadEventEnd
+            ),
+
+            firstContentfulPaint: toFixedNumber(
+              firstContentfulPaint?.startTime
+            ),
+
+            navigationStart: toFixedNumber(
+              navigationEntry?.startTime
+            ),
+          },
         };
       });
-    });
-  });
+    }
+  );
+
+
+  // ----------------------------------------
+  // W3C timings
+  // ----------------------------------------
+
+  Cypress.Commands.add(
+    "measureW3CTimings",
+    (pageName = "page") => {
+      return cy
+        .collectPageLoadMetrics(pageName)
+        .then((metrics) => {
+          return {
+            pageName: metrics.pageName,
+            timestamp: metrics.timestamp,
+            url: metrics.url,
+
+            w3cTimings: {
+              navigationStart:
+                metrics.metrics.navigationStart,
+
+              responseStart:
+                metrics.metrics.responseStart,
+
+              domContentLoaded:
+                metrics.metrics.domContentLoaded,
+
+              loadEventEnd:
+                metrics.metrics.loadEventEnd,
+
+              firstContentfulPaint:
+                metrics.metrics.firstContentfulPaint,
+
+              duration:
+                metrics.metrics.duration,
+            },
+          };
+        });
+    }
+  );
+
+
+  // ----------------------------------------
+  // Save JSON history
+  // ----------------------------------------
+
+  Cypress.Commands.add(
+    "savePerformanceMetrics",
+    (
+      pageName = "page",
+      jsonPath =
+        "cypress/performance/results/performance-results.json"
+    ) => {
+      return cy
+        .collectPageLoadMetrics(pageName)
+        .then((metric) => {
+
+          return cy
+            .task(
+              "readPerformanceHistory",
+              jsonPath,
+              {
+                log: false,
+              }
+            )
+            .then((existingRows) => {
+
+              const rows =
+                Array.isArray(existingRows)
+                  ? existingRows
+                  : [];
+
+              const updatedRows = [
+                ...rows,
+                metric,
+              ];
+
+              return cy
+                .writeFile(
+                  jsonPath,
+                  updatedRows,
+                  {
+                    log: false,
+                  }
+                )
+                .then(() => {
+                  return {
+                    filePath: jsonPath,
+                    metric,
+                    rows: updatedRows,
+                    message:
+                      "Performance metrics saved successfully",
+                  };
+                });
+            });
+        });
+    }
+  );
+
+
+  // ----------------------------------------
+  // Generate HTML report
+  // ----------------------------------------
+
+  Cypress.Commands.add(
+    "generatePerformanceReport",
+    (
+      filePath =
+        "cypress/performance/reports/performance-report.html",
+
+      pageName = "Current page",
+
+      jsonPath =
+        "cypress/performance/results/performance-results.json"
+    ) => {
+      return cy
+        .savePerformanceMetrics(
+          pageName,
+          jsonPath
+        )
+        .then((result) => {
+
+          const html =
+            generateHtmlReport(result.rows);
+
+          return cy
+            .writeFile(
+              filePath,
+              html,
+              {
+                log: false,
+              }
+            )
+            .then(() => {
+              return {
+                filePath,
+                jsonPath,
+                rows: result.rows,
+                html,
+                message:
+                  "Performance report generated successfully",
+              };
+            });
+        });
+    }
+  );
+
+
+  // ----------------------------------------
+  // Clear history
+  // ----------------------------------------
+
+  Cypress.Commands.add(
+    "clearPerformanceHistory",
+    (
+      jsonPath =
+        "cypress/performance/results/performance-results.json"
+    ) => {
+      return cy.task(
+        "clearPerformanceHistory",
+        jsonPath,
+        {
+          log: false,
+        }
+      );
+    }
+  );
 }
 
-if (typeof window !== "undefined" && window.Cypress) {
+
+if (
+  typeof window !== "undefined" &&
+  window.Cypress
+) {
   registerPerformanceCommands();
 }
 
+
 module.exports = {
   registerPerformanceCommands,
-  generateHtmlReport
+  generateHtmlReport,
 };
+
+
 module.exports.default = {
   registerPerformanceCommands,
-  generateHtmlReport
+  generateHtmlReport,
 };
