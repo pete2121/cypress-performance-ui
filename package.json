@@ -1,18 +1,27 @@
 {
   "name": "cypress-performance-ui",
-  "version": "1.0.0",
-  "description": "Cypress performance UI",
+  "version": "1.1.0",
+  "description": "Cypress performance testing with browser-native metrics, persistent JSON history, and visual HTML reports.",
   "main": "index.js",
   "files": [
     "index.js",
-    "README.md"
+    "plugin.js",
+    "README.md",
+    "assets"
   ],
   "keywords": [
     "cypress",
     "performance",
-    "web-vitals",
-    "google-timings",
-    "custom-commands"
+    "performance-testing",
+    "web-performance",
+    "performance-api",
+    "first-contentful-paint",
+    "fcp",
+    "ttfb",
+    "performance-metrics",
+    "performance-report",
+    "html-report",
+    "test-automation"
   ],
   "author": "Petros Plakogiannis",
   "license": "MIT",
