@@ -239,6 +239,29 @@ function generateHtmlReport(rows) {
 </body>
 </html>`;
 }
+
+function calculatePercentile(values, percentile) {
+  if (!values.length) {
+    throw new Error("Cannot calculate percentile from empty values");
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const position = ((sorted.length - 1) * percentile) / 100;
+
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+
+  if (lower === upper) {
+    return sorted[lower];
+  }
+
+  const weight = position - lower;
+
+  return sorted[lower] +
+    (sorted[upper] - sorted[lower]) * weight;
+}
+
+
 function registerPerformanceCommands() {
   if (typeof Cypress === "undefined") {
     return;
@@ -452,6 +475,119 @@ function registerPerformanceCommands() {
         });
     }
   );
+
+    // ----------------------------------------
+  // Assertion For Page Load from Baseline
+  // ----------------------------------------
+
+
+  Cypress.Commands.add(
+  "assertPageLoadBaseline",
+  (pageName, options = {}) => {
+    const {
+      percentile = 75,
+      historyDays = 30,
+      minSamples = 10,
+      tolerance = 10,
+      jsonPath = "cypress/performance/results/performance-results.json"
+    } = options;
+
+    if (!pageName || typeof pageName !== "string") {
+      throw new Error("pageName must be a non-empty string");
+    }
+
+    if (
+      !Number.isFinite(percentile) ||
+      percentile < 0 ||
+      percentile > 100
+    ) {
+      throw new Error("percentile must be between 0 and 100");
+    }
+
+    if (!Number.isFinite(historyDays) || historyDays <= 0) {
+      throw new Error("historyDays must be greater than 0");
+    }
+
+    if (!Number.isInteger(minSamples) || minSamples < 1) {
+      throw new Error("minSamples must be a positive integer");
+    }
+
+    if (!Number.isFinite(tolerance) || tolerance < 0) {
+      throw new Error("tolerance must be zero or greater");
+    }
+
+    const now = Date.now();
+    const cutoff = now - historyDays * 24 * 60 * 60 * 1000;
+
+    // Read existing history before collecting current metrics.
+    return cy
+      .task("readPerformanceHistory", jsonPath, { log: false })
+      .then((rows) => {
+        const durations = rows
+          .filter((row) => {
+            const timestamp = Date.parse(row.timestamp);
+            const duration = row.metrics?.duration;
+
+            return (
+              row.pageName === pageName &&
+              Number.isFinite(timestamp) &&
+              timestamp >= cutoff &&
+              timestamp < now &&
+              typeof duration === "number" &&
+              Number.isFinite(duration) &&
+              duration >= 0
+            );
+          })
+          .map((row) => row.metrics.duration);
+
+        if (durations.length < minSamples) {
+          throw new Error(
+            `[Performance Baseline] Insufficient history for "${pageName}". ` +
+            `Found ${durations.length} samples; need ${minSamples}.`
+          );
+        }
+
+        const baseline = calculatePercentile(durations, percentile);
+        const threshold = baseline * (1 + tolerance / 100);
+
+        return cy.collectPageLoadMetrics(pageName).then((current) => {
+          const actual = current.metrics.duration;
+
+          if (!Number.isFinite(actual) || actual < 0) {
+            throw new Error(
+              `[Performance Baseline] Invalid current duration: ${actual}`
+            );
+          }
+
+          Cypress.log({
+            name: "performance baseline",
+            message:
+              `${pageName}: ${actual.toFixed(2)} ms | ` +
+              `p${percentile}: ${baseline.toFixed(2)} ms | ` +
+              `threshold: ${threshold.toFixed(2)} ms | ` +
+              `samples: ${durations.length}`
+          });
+
+          expect(
+            actual,
+            `Page Load for "${pageName}" compared against historical ` +
+            `p${percentile} + ${tolerance}% ` +
+            `(${threshold.toFixed(2)} ms)`
+          ).to.be.at.most(threshold);
+
+          return {
+            pageName,
+            actual,
+            baseline,
+            threshold,
+            percentile,
+            tolerance,
+            sampleCount: durations.length
+          };
+        });
+      });
+  }
+);
 
 
   // ----------------------------------------

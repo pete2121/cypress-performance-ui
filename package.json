@@ -1,6 +1,6 @@
 {
   "name": "cypress-performance-ui",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Cypress performance testing with browser-native metrics, persistent JSON history, and visual HTML reports.",
   "main": "index.js",
   "files": [

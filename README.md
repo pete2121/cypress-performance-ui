@@ -16,6 +16,7 @@ Collect browser-native performance metrics, persist historical results, and gene
 - Load Event
 - Total page load duration
 - Resettable performance history
+- Historical page-load baseline assertions using configurable percentiles and tolerance
 - No Lighthouse dependency
 - Designed specifically for Cypress
 
@@ -236,6 +237,74 @@ cy.generatePerformanceReport(
 ```
 
 For most use cases, this is the main command you need.
+
+---
+
+### `cy.assertPageLoadBaseline(pageName, options)`
+
+Compares the current page-load duration against a percentile calculated from previously saved JSON performance history. The Cypress assertion passes when the current duration is less than or equal to the allowed threshold, and fails when it is higher.
+
+First, collect historical measurements using `cy.generatePerformanceReport()` or `cy.savePerformanceMetrics()`. Then run the assertion **after `cy.visit()`**:
+
+```js
+cy.visit("/landing");
+
+cy.assertPageLoadBaseline("Landing page", {
+  percentile: 75,
+  historyDays: 30,
+  minSamples: 10,
+  tolerance: 10,
+});
+```
+
+The baseline uses the page name to select matching history entries. The threshold is calculated as:
+
+```text
+threshold = historical percentile * (1 + tolerance / 100)
+```
+
+For example, a historical p75 of `350 ms` with `10%` tolerance allows up to `385 ms`.
+
+#### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `percentile` | `75` | Historical percentile (0–100), calculated with linear interpolation. |
+| `historyDays` | `30` | Include measurements from the last N days. |
+| `minSamples` | `10` | Minimum matching historical measurements required. |
+| `tolerance` | `10` | Allowed percentage above the calculated baseline. |
+| `jsonPath` | `cypress/performance/results/performance-results.json` | Path to the JSON history file. |
+
+If there are fewer than `minSamples` matching measurements, the command fails with an insufficient-history error. It does **not** automatically save the current measurement to JSON.
+
+#### Cypress assertion examples
+
+**PASS:** The current page load is within the historical threshold.
+
+![Passing historical page load baseline assertion](./assets/baseline-pass.png)
+
+**FAIL:** The current page load exceeds the threshold. This example intentionally uses `percentile: 0` and `tolerance: 0` to demonstrate a failing assertion; `p75` is recommended as a more practical starting point.
+
+![Failing historical page load baseline assertion](./assets/baseline-fail.png)
+
+#### Recommended test workflow
+
+```js
+describe("Page load performance", () => {
+  it("stays within the historical baseline", () => {
+    cy.visit("/landing");
+
+    cy.assertPageLoadBaseline("Landing page", {
+      percentile: 75,
+      historyDays: 30,
+      minSamples: 10,
+      tolerance: 10,
+    });
+  });
+});
+```
+
+**Important:** Run the baseline assertion before saving the current navigation's metrics. If the same navigation has already been saved to history earlier in the test, that measurement can be included in the baseline. Keep historical results available between test runs; ephemeral CI workers need persisted artifacts or another shared history source. Avoid clearing history before running baseline assertions.
 
 ---
 
