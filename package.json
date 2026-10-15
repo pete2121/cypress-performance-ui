@@ -9,6 +9,13 @@
     "README.md",
     "assets"
   ],
+  "scripts": {
+    "cy:open": "cypress open --e2e",
+    "test:aer": "cypress run --spec cypress/e2e/maritime/aer-form-completion.cy.js",
+    "test:aer:watch": "cypress open --e2e --env stepDelayMs=1500",
+    "perf:summary": "node scripts/performance-summary.js",
+    "fixtures:ships": "node scripts/generate-ships-xml.js"
+  },
   "keywords": [
     "cypress",
     "performance",
@@ -35,5 +42,8 @@
   },
   "peerDependencies": {
     "cypress": ">=10.0.0"
+  },
+  "devDependencies": {
+    "cypress": "^15.21.1"
   }
 }
