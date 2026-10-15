@@ -1,3 +1,9 @@
 node_modules/
 .DS_Store
 npm-debug.log*
+
+# Cypress test project (not published: package.json "files" lists only the library)
+cypress.env.json
+cypress/performance/
+cypress/screenshots/
+cypress/videos/
