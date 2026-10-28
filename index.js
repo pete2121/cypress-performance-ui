@@ -7,7 +7,17 @@ function toFixedNumber(value, digits = 2) {
 }
 
 
-function generateHtmlReport(rows) {
+const DEFAULT_BASELINE_RESULTS_PATH = "cypress/performance/results/baseline-results.json";
+const DEFAULT_REPORT_PATH = "cypress/performance/reports/performance-report.html";
+const DEFAULT_HISTORY_PATH = "cypress/performance/results/performance-results.json";
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[char]);
+}
+
+function generateHtmlReport(rows, baselineResults = []) {
   const safeRows = rows.map((row) => ({
     pageName: row.pageName,
     timestamp: row.timestamp,
@@ -33,7 +43,17 @@ function generateHtmlReport(rows) {
     )
     .join("");
 
-  const chartData = JSON.stringify(safeRows);
+  const chartData = JSON.stringify(safeRows).replace(/</g, "\\u003c");
+  const results = Array.isArray(baselineResults) ? baselineResults : [];
+  const passCount = results.filter((r) => r.status === "PASS").length;
+  const failCount = results.filter((r) => r.status === "FAIL").length;
+  const baselineHtmlRows = results.slice().reverse().map((r) => `
+    <tr>
+      <td>${escapeHtml(r.pageName)}</td>
+      <td>${Number(r.baseline).toFixed(2)} ms</td>
+      <td>${Number(r.actual).toFixed(2)} ms <strong style="color:${r.status === "PASS" ? "#16803c" : "#b42318"}">${escapeHtml(r.status)}</strong></td>
+      <td>${escapeHtml(r.timestamp)}</td>
+    </tr>`).join("");
 
   return `<!doctype html>
 <html lang="en">
@@ -150,11 +170,40 @@ function generateHtmlReport(rows) {
       </table>
     </div>
 
+    <div class="grid">
+      <div class="panel">
+        <h2>Historical Baseline Results</h2>
+        <p>Actual values are compared against the baseline plus the configured tolerance.</p>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Page</th><th>Baseline</th><th>Actual / Status</th><th>Date</th></tr></thead>
+            <tbody>${baselineHtmlRows || '<tr><td colspan="4">No baseline comparisons yet.</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>PASS vs FAIL</h2>
+        <div id="baselinePieChart"></div>
+      </div>
+    </div>
+
     <div class="footer-credit"><strong>Developed by Petros Plakogiannis</strong></div>
   </div>
 
   <script>
     const data = ${chartData};
+    const baselineCounts = [${passCount}, ${failCount}];
+    if (baselineCounts[0] + baselineCounts[1] > 0) {
+      Plotly.newPlot("baselinePieChart", [{
+        labels: ["PASS", "FAIL"],
+        values: baselineCounts,
+        type: "pie",
+        marker: { colors: ["#16803c", "#b42318"] },
+        textinfo: "label+percent"
+      }], { margin: { t: 10, r: 10, b: 10, l: 10 }, paper_bgcolor: "white" });
+    } else {
+      document.getElementById("baselinePieChart").textContent = "No baseline comparisons yet.";
+    }
 
     function buildSeries(metricKey) {
       return {
@@ -261,6 +310,16 @@ function calculatePercentile(values, percentile) {
     (sorted[upper] - sorted[lower]) * weight;
 }
 
+
+
+function updateDashboardFromHistory(jsonPath, reportPath, baselinePath) {
+  return cy.task("readPerformanceHistory", jsonPath, { log: false }).then((history) =>
+    cy.task("readPerformanceHistory", baselinePath, { log: false }).then((results) => {
+      const html = generateHtmlReport(history || [], results || []);
+      return cy.writeFile(reportPath, html, { log: false }).then(() => html);
+    })
+  );
+}
 
 function registerPerformanceCommands() {
   if (typeof Cypress === "undefined") {
@@ -450,27 +509,16 @@ function registerPerformanceCommands() {
           jsonPath
         )
         .then((result) => {
-
-          const html =
-            generateHtmlReport(result.rows);
-
-          return cy
-            .writeFile(
-              filePath,
-              html,
-              {
-                log: false,
-              }
-            )
-            .then(() => {
-              return {
+          return cy.task("readPerformanceHistory", DEFAULT_BASELINE_RESULTS_PATH, { log: false })
+            .then((baselineResults) => {
+              const html = generateHtmlReport(result.rows, baselineResults || []);
+              return cy.writeFile(filePath, html, { log: false }).then(() => ({
                 filePath,
                 jsonPath,
                 rows: result.rows,
                 html,
-                message:
-                  "Performance report generated successfully",
-              };
+                message: "Performance report generated successfully"
+              }));
             });
         });
     }
@@ -489,7 +537,9 @@ function registerPerformanceCommands() {
       historyDays = 30,
       minSamples = 10,
       tolerance = 10,
-      jsonPath = "cypress/performance/results/performance-results.json"
+      jsonPath = DEFAULT_HISTORY_PATH,
+      baselineResultsPath = DEFAULT_BASELINE_RESULTS_PATH,
+      reportPath = DEFAULT_REPORT_PATH
     } = options;
 
     if (!pageName || typeof pageName !== "string") {
@@ -568,22 +618,45 @@ function registerPerformanceCommands() {
               `samples: ${durations.length}`
           });
 
-          expect(
-            actual,
-            `Page Load for "${pageName}" compared against historical ` +
-            `p${percentile} + ${tolerance}% ` +
-            `(${threshold.toFixed(2)} ms)`
-          ).to.be.at.most(threshold);
-
-          return {
+          const status = actual <= threshold ? "PASS" : "FAIL";
+          const comparison = {
             pageName,
+            timestamp: current.timestamp,
             actual,
             baseline,
             threshold,
             percentile,
             tolerance,
-            sampleCount: durations.length
+            sampleCount: durations.length,
+            status
           };
+
+          // Save both PASS and FAIL before the assertion can throw.
+          return cy.task("readPerformanceHistory", baselineResultsPath, { log: false })
+            .then((existing) => {
+              const updated = [...(Array.isArray(existing) ? existing : []), comparison];
+              return cy.writeFile(baselineResultsPath, updated, { log: false });
+            })
+            .then(() => updateDashboardFromHistory(jsonPath, reportPath, baselineResultsPath))
+            .then(() => {
+              expect(
+                actual,
+                `Page Load for "${pageName}" compared against historical ` +
+                `p${percentile} + ${tolerance}% ` +
+                `(${threshold.toFixed(2)} ms)`
+              ).to.be.at.most(threshold);
+
+              return {
+                pageName,
+                actual,
+                baseline,
+                threshold,
+                percentile,
+                tolerance,
+                sampleCount: durations.length,
+                status
+              };
+            });
         });
       });
   }

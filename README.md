@@ -17,6 +17,9 @@ Collect browser-native performance metrics, persist historical results, and gene
 - Total page load duration
 - Resettable performance history
 - Historical page-load baseline assertions using configurable percentiles and tolerance
+- Baseline PASS/FAIL history table and ratio pie chart in the HTML dashboard
+- TypeScript definitions with autocomplete for Cypress commands
+- TypeScript definitions with autocomplete and type checking for Cypress commands
 - No Lighthouse dependency
 - Designed specifically for Cypress
 
@@ -86,6 +89,39 @@ or:
 ```js
 require("cypress-performance-ui");
 ```
+
+## TypeScript Support
+
+Cypress Performance UI includes TypeScript declarations for its custom Cypress commands, including `cy.assertPageLoadBaseline()`. This enables editor autocomplete and type checking without converting the plugin itself to TypeScript.
+
+In a TypeScript Cypress project, register the commands in `cypress/support/e2e.ts`:
+
+```ts
+import "cypress-performance-ui";
+```
+
+Keep the Node plugin registration in `cypress.config.js` or `cypress.config.ts` as described in [Setup](#setup).
+
+Example TypeScript test:
+
+```ts
+describe("Page load performance", () => {
+  it("checks the historical baseline", () => {
+    cy.visit("/landing");
+
+    cy.assertPageLoadBaseline("Landing page", {
+      percentile: 75,
+      historyDays: 30,
+      minSamples: 10,
+      tolerance: 10,
+    });
+  });
+});
+```
+
+The `index.d.ts` declarations are shipped with the npm package. You do not need to install TypeScript just to use the plugin in an existing JavaScript Cypress project.
+
+**Compatibility note:** TypeScript integration was tested with Cypress `15.13.0` and TypeScript `5.8.3`. These are tested versions, not minimum or required versions. If Cypress cannot compile `.cy.ts` files, ensure TypeScript is installed in the consuming project and a `tsconfig.json` exists in the project root or `cypress/` directory. If you encounter a Webpack/`ts-loader` compilation error, check the installed Cypress and TypeScript versions.
 
 ## Quick Start
 
@@ -274,8 +310,31 @@ For example, a historical p75 of `350 ms` with `10%` tolerance allows up to `385
 | `minSamples` | `10` | Minimum matching historical measurements required. |
 | `tolerance` | `10` | Allowed percentage above the calculated baseline. |
 | `jsonPath` | `cypress/performance/results/performance-results.json` | Path to the JSON history file. |
+| `baselineResultsPath` | `cypress/performance/results/baseline-results.json` | Path to the saved baseline comparisons. |
+| `reportPath` | `cypress/performance/reports/performance-report.html` | HTML dashboard updated after each comparison. |
 
 If there are fewer than `minSamples` matching measurements, the command fails with an insufficient-history error. It does **not** automatically save the current measurement to JSON.
+
+#### Baseline results in the HTML dashboard
+
+Each baseline assertion saves a comparison (including **FAIL** results) to:
+
+```text
+cypress/performance/results/baseline-results.json
+```
+
+The HTML dashboard is automatically updated after each baseline assertion. It shows a **four-column table** (Page, Baseline, Actual / Status, Date) and a **PASS vs FAIL pie chart**. PASS/FAIL is determined by the tolerance-adjusted threshold, not simply by whether Actual exceeds Baseline. The dashboard also retains the existing performance charts and raw measurements.
+
+You can override the result and report paths if needed:
+
+```js
+cy.assertPageLoadBaseline("Landing page", {
+  baselineResultsPath: "cypress/performance/results/baseline-results.json",
+  reportPath: "cypress/performance/reports/performance-report.html",
+});
+```
+
+The HTML report can be opened after the test, including after a baseline FAIL. Results accumulate across test runs as long as the JSON files are retained. An insufficient-history error does not create a PASS/FAIL result because no comparison was possible.
 
 #### Cypress assertion examples
 
