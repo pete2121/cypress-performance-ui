@@ -7,6 +7,8 @@ Collect browser-native performance metrics, persist historical results, and gene
 ## Features
 
 - Browser-native performance metrics using the Performance API
+- Network request timings for XHR, Fetch, Images, Scripts, CSS, Fonts, and Other
+- Filterable Network Requests dashboard with duration thresholds and OK/SLOW status
 - Persistent JSON performance history
 - Visual HTML performance dashboard
 - Performance trends across multiple test runs
@@ -18,7 +20,6 @@ Collect browser-native performance metrics, persist historical results, and gene
 - Resettable performance history
 - Historical page-load baseline assertions using configurable percentiles and tolerance
 - Baseline PASS/FAIL history table and ratio pie chart in the HTML dashboard
-- TypeScript definitions with autocomplete for Cypress commands
 - TypeScript definitions with autocomplete and type checking for Cypress commands
 - No Lighthouse dependency
 - Designed specifically for Cypress
@@ -168,7 +169,60 @@ The JSON file contains the historical measurements.
 
 The HTML report visualizes the collected results across multiple test runs.
 
+## Network Requests
+
+Collect browser network resource timings (XHR, Fetch, Images, Scripts, CSS, Fonts and Other) during Cypress actions.
+Clear resource timings **before** the action, wait for the API response, then collect:
+
+```js
+cy.visit("https://your-app.example");
+cy.intercept("GET", "**/api/products*").as("products");
+cy.clearNetworkTimings();
+cy.get("#search-button").click();
+cy.wait("@products");
+cy.collectNetworkMetrics("Product Search", { threshold: 500 });
+```
+
+Results are appended to `cypress/performance/results/network-results.json` and
+the HTML dashboard is refreshed automatically with a **Network Requests** table.
+`threshold` is in milliseconds. Requests above the threshold are marked **SLOW**.
+
+**Limitations:** This measures browser-observed request duration, not SQL execution
+time. Cross-origin resources may expose limited timing information without
+`Timing-Allow-Origin`. Requests completed before clearing or after collecting
+are not included. Request URLs can contain sensitive query
+parameters; review reports before sharing.
+
+### Filter requests by resource type
+
+The HTML report includes a **Network Requests** table with a **Resource type** filter (All, XHR, Fetch, Images, Scripts, CSS, Fonts, Other). URLs wrap inside the table so Duration and Status stay visible. Resource types are based on the browser Performance API `initiatorType`; some resources may appear as Other. Older saved network rows without a type are classified as Fetch/XHR when possible, otherwise Other.
+
+### Network Requests dashboard screenshot
+
+Filter requests by resource type to focus on API calls, images, scripts, CSS, fonts, or all resources. The table shows each request URL, duration, status, action, and timestamp. Long URLs wrap so the Duration and Status columns stay visible.
+
+![Historical baseline results and filterable Network Requests dashboard](assets/network-requests.png)
+
 ## Commands
+
+### `cy.clearNetworkTimings()`
+
+Clears browser resource timings before an action, so you can capture the requests triggered by that action.
+
+```js
+cy.clearNetworkTimings();
+```
+
+### `cy.collectNetworkMetrics(actionName, options)`
+
+Collects network resource timings and saves them to the HTML dashboard. Set `threshold` in milliseconds to mark requests as **SLOW**.
+
+```js
+cy.collectNetworkMetrics("Product Search", { threshold: 500 });
+```
+
+See [Network Requests](#network-requests) for the full example, filters, and screenshot.
+
 
 ### `cy.collectPageLoadMetrics(pageName)`
 
@@ -535,37 +589,3 @@ Petros Plakogiannis
 ## License
 
 MIT
-
-## Network Requests (v1.4.0 preview)
-
-Collect browser network resource timings (XHR, Fetch, Images, Scripts, CSS, Fonts and Other) during Cypress actions.
-Clear resource timings **before** the action, wait for the API response, then collect:
-
-```js
-cy.visit("https://your-app.example");
-cy.intercept("GET", "**/api/products*").as("products");
-cy.clearNetworkTimings();
-cy.get("#search-button").click();
-cy.wait("@products");
-cy.collectNetworkMetrics("Product Search", { threshold: 500 });
-```
-
-Results are appended to `cypress/performance/results/network-results.json` and
-the HTML dashboard is refreshed automatically with a **Network Requests** table.
-`threshold` is in milliseconds. Requests above the threshold are marked **SLOW**.
-
-**Limitations:** This measures browser-observed request duration, not SQL execution
-time. Cross-origin resources may expose limited timing information without
-`Timing-Allow-Origin`. Requests completed before clearing or after collecting
-are not included. Request URLs can contain sensitive query
-parameters; review reports before sharing.
-
-### Network Requests dashboard filters
-
-The HTML report includes a **Network Requests** table with a **Resource type** filter (All, XHR, Fetch, Images, Scripts, CSS, Fonts, Other). URLs wrap inside the table so Duration and Status stay visible. Resource types are based on the browser Performance API `initiatorType`; some resources may appear as Other. Older saved network rows without a type are classified as Fetch/XHR when possible, otherwise Other.
-
-### Network Requests dashboard screenshot
-
-Filter requests by resource type to focus on API calls, images, scripts, CSS, fonts, or all resources. The table shows each request URL, duration, status, action, and timestamp. Long URLs wrap so the Duration and Status columns stay visible.
-
-![Historical baseline results and filterable Network Requests dashboard](assets/network-requests.png)
