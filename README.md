@@ -160,6 +160,7 @@ cypress/
 └── performance/
     ├── results/
     │   └── performance-results.json
+    │ 	└── network-results.json
     │
     └── reports/
         └── performance-report.html
