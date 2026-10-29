@@ -24,6 +24,32 @@ declare namespace CypressPerformanceUI {
     w3cTimings: PerformanceMetrics;
   }
 
+  interface NetworkOptions {
+    threshold?: number;
+    jsonPath?: string;
+    reportPath?: string;
+    historyPath?: string;
+    baselineResultsPath?: string;
+  }
+
+  interface NetworkEntry {
+    timestamp: string;
+    label: string;
+    url: string;
+    initiatorType?: string;
+    type?: "XHR" | "Fetch" | "Image" | "Script" | "CSS" | "Font" | "Other";
+    duration: number;
+    slow: boolean;
+  }
+
+  interface NetworkResult {
+    label: string;
+    threshold: number;
+    entries: NetworkEntry[];
+    filePath: string;
+    reportPath: string;
+  }
+
   interface BaselineOptions {
     percentile?: number;
     historyDays?: number;
@@ -64,6 +90,8 @@ declare namespace CypressPerformanceUI {
 declare global {
   namespace Cypress {
     interface Chainable {
+      clearNetworkTimings(): Chainable<void>;
+      collectNetworkMetrics(label?: string, options?: CypressPerformanceUI.NetworkOptions): Chainable<CypressPerformanceUI.NetworkResult>;
       collectPageLoadMetrics(pageName?: string): Chainable<CypressPerformanceUI.Measurement>;
       measureW3CTimings(pageName?: string): Chainable<CypressPerformanceUI.W3CMeasurement>;
       savePerformanceMetrics(pageName?: string, jsonPath?: string): Chainable<CypressPerformanceUI.SaveResult>;
@@ -77,7 +105,8 @@ declare global {
 export function registerPerformanceCommands(): void;
 export function generateHtmlReport(
   rows: CypressPerformanceUI.Measurement[],
-  baselineResults?: CypressPerformanceUI.BaselineResult[]
+  baselineResults?: CypressPerformanceUI.BaselineResult[],
+  networkResults?: CypressPerformanceUI.NetworkEntry[]
 ): string;
 
 declare const _default: {

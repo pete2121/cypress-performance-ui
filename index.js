@@ -9,6 +9,7 @@ function toFixedNumber(value, digits = 2) {
 
 const DEFAULT_BASELINE_RESULTS_PATH = "cypress/performance/results/baseline-results.json";
 const DEFAULT_REPORT_PATH = "cypress/performance/reports/performance-report.html";
+const DEFAULT_NETWORK_PATH = "cypress/performance/results/network-results.json";
 const DEFAULT_HISTORY_PATH = "cypress/performance/results/performance-results.json";
 
 function escapeHtml(value) {
@@ -17,7 +18,7 @@ function escapeHtml(value) {
   })[char]);
 }
 
-function generateHtmlReport(rows, baselineResults = []) {
+function generateHtmlReport(rows, baselineResults = [], networkResults = []) {
   const safeRows = rows.map((row) => ({
     pageName: row.pageName,
     timestamp: row.timestamp,
@@ -54,6 +55,13 @@ function generateHtmlReport(rows, baselineResults = []) {
       <td>${Number(r.actual).toFixed(2)} ms <strong style="color:${r.status === "PASS" ? "#16803c" : "#b42318"}">${escapeHtml(r.status)}</strong></td>
       <td>${escapeHtml(r.timestamp)}</td>
     </tr>`).join("");
+
+  const networkHtmlRows = (Array.isArray(networkResults) ? networkResults : [])
+    .slice().sort((a, b) => b.duration - a.duration)
+    .map((r) => {
+      const type = r.type || (r.initiatorType === "xmlhttprequest" ? "XHR" : r.initiatorType === "fetch" ? "Fetch" : "Other");
+      return `<tr data-network-type="${escapeHtml(type)}"><td>${escapeHtml(r.timestamp)}</td><td>${escapeHtml(r.label)}</td><td>${escapeHtml(type)}</td><td class="network-url" title="${escapeHtml(r.url)}">${escapeHtml(r.url)}</td><td class="network-duration">${Number(r.duration).toFixed(2)} ms</td><td class="network-status" style="color:${r.slow ? "#b42318" : "#16803c"}">${r.slow ? "SLOW" : "OK"}</td></tr>`;
+    }).join("");
 
   return `<!doctype html>
 <html lang="en">
@@ -104,6 +112,13 @@ function generateHtmlReport(rows, baselineResults = []) {
       margin-bottom: 16px;
       box-shadow: 0 10px 24px rgba(8, 36, 46, 0.07);
     }
+    .network-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    .network-table th, .network-table td { padding: 10px 8px; vertical-align: top; overflow-wrap: anywhere; word-break: normal; }
+    .network-table .network-url { overflow-wrap: anywhere; word-break: break-word; font-size: 12px; line-height: 1.5; }
+    .network-table .network-duration, .network-table .network-status { white-space: nowrap; overflow-wrap: normal; }
+    .network-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .network-toolbar select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--ink); }
+    @media (max-width: 700px) { .network-table { min-width: 700px; } }
     .grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -187,10 +202,51 @@ function generateHtmlReport(rows, baselineResults = []) {
       </div>
     </div>
 
+    <div class="panel">
+      <h2>Network Requests</h2>
+      <p>Browser resource timings captured during Cypress actions.</p>
+      <div class="network-toolbar">
+        <label for="networkTypeFilter">Resource type:</label>
+        <select id="networkTypeFilter" aria-label="Filter network requests by type">
+          <option value="All">All</option>
+          <option value="XHR">XHR</option>
+          <option value="Fetch">Fetch</option>
+          <option value="Image">Images</option>
+          <option value="Script">Scripts</option>
+          <option value="CSS">CSS</option>
+          <option value="Font">Fonts</option>
+          <option value="Other">Other</option>
+        </select>
+        <span id="networkCount" style="color:var(--muted);font-size:13px"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="network-table">
+          <colgroup><col style="width:17%"><col style="width:13%"><col style="width:9%"><col style="width:35%"><col style="width:14%"><col style="width:12%"></colgroup>
+          <thead><tr><th>Timestamp</th><th>Action</th><th>Type</th><th>Request URL</th><th>Duration</th><th>Status</th></tr></thead>
+          <tbody id="networkTableBody">${networkHtmlRows || '<tr><td colspan="6">No network measurements yet.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+    </div>
+
     <div class="footer-credit"><strong>Developed by Petros Plakogiannis</strong></div>
   </div>
 
   <script>
+    const networkFilter = document.getElementById("networkTypeFilter");
+    const networkRows = Array.from(document.querySelectorAll("#networkTableBody tr[data-network-type]"));
+    function applyNetworkFilter() {
+      const selected = networkFilter.value;
+      let visible = 0;
+      networkRows.forEach((row) => {
+        const matches = selected === "All" || row.dataset.networkType === selected;
+        row.hidden = !matches;
+        if (matches) visible++;
+      });
+      document.getElementById("networkCount").textContent = visible + " request(s)";
+    }
+    networkFilter.addEventListener("change", applyNetworkFilter);
+    applyNetworkFilter();
     const data = ${chartData};
     const baselineCounts = [${passCount}, ${failCount}];
     if (baselineCounts[0] + baselineCounts[1] > 0) {
@@ -312,11 +368,13 @@ function calculatePercentile(values, percentile) {
 
 
 
-function updateDashboardFromHistory(jsonPath, reportPath, baselinePath) {
+function updateDashboardFromHistory(jsonPath, reportPath, baselinePath, networkPath = DEFAULT_NETWORK_PATH) {
   return cy.task("readPerformanceHistory", jsonPath, { log: false }).then((history) =>
     cy.task("readPerformanceHistory", baselinePath, { log: false }).then((results) => {
-      const html = generateHtmlReport(history || [], results || []);
-      return cy.writeFile(reportPath, html, { log: false }).then(() => html);
+      return cy.task("readPerformanceHistory", networkPath, { log: false }).then((network) => {
+        const html = generateHtmlReport(history || [], results || [], network || []);
+        return cy.writeFile(reportPath, html, { log: false }).then(() => html);
+      });
     })
   );
 }
@@ -488,6 +546,38 @@ function registerPerformanceCommands() {
   );
 
 
+  // Capture browser resource timings after the application action has completed.
+  // Call clearNetworkTimings() before the action to isolate that interaction.
+  Cypress.Commands.add("clearNetworkTimings", () =>
+    cy.window().then((win) => win.performance.clearResourceTimings())
+  );
+
+  Cypress.Commands.add("collectNetworkMetrics", (label = "Current action", options = {}) => {
+    const { threshold = 500, jsonPath = DEFAULT_NETWORK_PATH,
+      reportPath = DEFAULT_REPORT_PATH, historyPath = DEFAULT_HISTORY_PATH,
+      baselineResultsPath = DEFAULT_BASELINE_RESULTS_PATH } = options;
+    if (!Number.isFinite(threshold) || threshold < 0) {
+      throw new Error("collectNetworkMetrics: threshold must be a non-negative number");
+    }
+    return cy.window().then((win) => {
+      const timestamp = new Date().toISOString();
+      const entries = win.performance.getEntriesByType("resource")
+        .map((r) => {
+          const initiator = String(r.initiatorType || "").toLowerCase();
+          const type = ({ xmlhttprequest: "XHR", fetch: "Fetch", img: "Image", image: "Image",
+            script: "Script", link: "CSS", css: "CSS", font: "Font" })[initiator] || "Other";
+          return { timestamp, label, url: r.name, initiatorType: initiator, type,
+            duration: toFixedNumber(r.duration), slow: r.duration > threshold };
+        });
+      return cy.task("readPerformanceHistory", jsonPath, { log: false }).then((history) => {
+        const rows = [...(Array.isArray(history) ? history : []), ...entries];
+        return cy.writeFile(jsonPath, rows, { log: false })
+          .then(() => updateDashboardFromHistory(historyPath, reportPath, baselineResultsPath, jsonPath))
+          .then(() => ({ label, threshold, entries, filePath: jsonPath, reportPath }));
+      });
+    });
+  });
+
   // ----------------------------------------
   // Generate HTML report
   // ----------------------------------------
@@ -511,14 +601,16 @@ function registerPerformanceCommands() {
         .then((result) => {
           return cy.task("readPerformanceHistory", DEFAULT_BASELINE_RESULTS_PATH, { log: false })
             .then((baselineResults) => {
-              const html = generateHtmlReport(result.rows, baselineResults || []);
-              return cy.writeFile(filePath, html, { log: false }).then(() => ({
+              return cy.task("readPerformanceHistory", DEFAULT_NETWORK_PATH, { log: false }).then((network) => {
+                const html = generateHtmlReport(result.rows, baselineResults || [], network || []);
+                return cy.writeFile(filePath, html, { log: false }).then(() => ({
                 filePath,
                 jsonPath,
                 rows: result.rows,
                 html,
                 message: "Performance report generated successfully"
-              }));
+                }));
+              });
             });
         });
     }
